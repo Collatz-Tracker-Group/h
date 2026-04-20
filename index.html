@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collatz Tracker</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0d1117;
+            color: #e6edf3;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background: #161b22;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid #30363d;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 2.2rem;
+        }
+
+        .section {
+            padding: 20px;
+            border-bottom: 1px solid #30363d;
+        }
+
+        .card {
+            background: #161b22;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #30363d;
+            margin-bottom: 15px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            padding: 8px;
+            border-bottom: 1px solid #30363d;
+        }
+
+        th {
+            background: #21262d;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Collatz Tracker Dashboard</h1>
+    <p>Live data streamed from a Raspberry Pi Pico W running MicroPython</p>
+</header>
+
+<div class="section">
+    <h2>📊 Today’s Stats</h2>
+    <div class="card">
+        <p><strong>Average Steps:</strong> <span id="avgSteps">Loading...</span></p>
+        <p><strong>Average Time:</strong> <span id="avgTime">Loading...</span></p>
+    </div>
+</div>
+
+<div class="section">
+    <h2>🏆 Top 5 Records (Most Steps)</h2>
+    <div class="card">
+        <table id="recordsTable">
+            <tr><th>N</th><th>Steps</th></tr>
+        </table>
+    </div>
+</div>
+
+<div class="section">
+    <h2>🧮 Latest Numbers</h2>
+    <div class="card">
+        <table id="latestTable">
+            <tr><th>N</th><th>Steps</th><th>Time (ms)</th></tr>
+        </table>
+    </div>
+</div>
+
+<script>
+const DB_URL = "https://YOUR_PROJECT_ID.firebaseio.com/collatz/results.json";
+
+async function fetchData() {
+    const res = await fetch(DB_URL);
+    const data = await res.json();
+    if (!data) return;
+
+    const entries = Object.values(data);
+
+    // Latest 10
+    const latest = entries.slice(-10).reverse();
+    const latestTable = document.getElementById("latestTable");
+    latestTable.innerHTML = "<tr><th>N</th><th>Steps</th><th>Time (ms)</th></tr>";
+    latest.forEach(e => {
+        latestTable.innerHTML += `<tr><td>${e.n}</td><td>${e.steps}</td><td>${e.duration_ms}</td></tr>`;
+    });
+
+    // Top 5 by steps
+    const top = [...entries].sort((a,b) => b.steps - a.steps).slice(0,5);
+    const recordsTable = document.getElementById("recordsTable");
+    recordsTable.innerHTML = "<tr><th>N</th><th>Steps</th></tr>";
+    top.forEach(e => {
+        recordsTable.innerHTML += `<tr><td>${e.n}</td><td>${e.steps}</td></tr>`;
+    });
+
+    // Averages
+    const avgSteps = entries.reduce((a,b)=>a+b.steps,0) / entries.length;
+    const avgTime = entries.reduce((a,b)=>a+b.duration_ms,0) / entries.length;
+
+    document.getElementById("avgSteps").textContent = avgSteps.toFixed(2);
+    document.getElementById("avgTime").textContent = avgTime.toFixed(2);
+}
+
+setInterval(fetchData, 2000);
+fetchData();
+</script>
+
+</body>
+</html>
