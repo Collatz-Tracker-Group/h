@@ -96,14 +96,28 @@
 </div>
 
 <script>
-const DB_URL = "https://collatz-tracker-default-rtdb.firebaseio.com/collatz/results.json";
+// Internal Collatz calculator — no Firebase
+let current = 1;
+let results = [];
+
+function collatzSteps(n) {
+    let steps = 0;
+    let x = n;
+    const start = performance.now();
+    while (x !== 1) {
+        x = (x & 1) === 0 ? x >> 1 : 3 * x + 1;
+        steps++;
+    }
+    const duration_ms = performance.now() - start;
+    return { n, steps, duration_ms };
+}
+
 // Graph setup
 const ctx = document.getElementById("avgChart").getContext("2d");
-
 const avgChart = new Chart(ctx, {
     type: "line",
     data: {
-        labels: [], // timestamps
+        labels: [],
         datasets: [
             {
                 label: "Average Steps",
@@ -133,37 +147,24 @@ const avgChart = new Chart(ctx, {
     }
 });
 
-async function fetchData() {
-    const res = await fetch(DB_URL);
-    const data = await res.json();
-    if (!data) return;
-
-    // Flatten arrays inside Firebase auto-keys
-let entries = [];
-
-for (const key in data) {
-    const value = data[key];
-
-    if (Array.isArray(value)) {
-        // batch array → expand it
-        entries.push(...value);
-    } else {
-        // single entry → push it
-        entries.push(value);
+function fetchData() {
+    // Internal calculation instead of Firebase fetch
+    const batchSize = 50;
+    for (let i = 0; i < batchSize; i++) {
+        results.push(collatzSteps(current));
+        current++;
     }
-}
-
 
     // Latest 10
-    const latest = entries.slice(-10).reverse();
+    const latest = results.slice(-10).reverse();
     const latestTable = document.getElementById("latestTable");
     latestTable.innerHTML = "<tr><th>N</th><th>Steps</th><th>Time (ms)</th></tr>";
     latest.forEach(e => {
-        latestTable.innerHTML += `<tr><td>${e.n}</td><td>${e.steps}</td><td>${e.duration_ms}</td></tr>`;
+        latestTable.innerHTML += `<tr><td>${e.n}</td><td>${e.steps}</td><td>${e.duration_ms.toFixed(3)}</td></tr>`;
     });
 
     // Top 5 by steps
-    const top = [...entries].sort((a,b) => b.steps - a.steps).slice(0,5);
+    const top = [...results].sort((a,b) => b.steps - a.steps).slice(0,5);
     const recordsTable = document.getElementById("recordsTable");
     recordsTable.innerHTML = "<tr><th>N</th><th>Steps</th></tr>";
     top.forEach(e => {
@@ -171,32 +172,30 @@ for (const key in data) {
     });
 
     // Averages
-    const avgSteps = entries.reduce((a,b)=>a+b.steps,0) / entries.length;
-    const avgTime = entries.reduce((a,b)=>a+b.duration_ms,0) / entries.length;
-
+    const avgSteps = results.reduce((a,b)=>a+b.steps,0) / results.length;
+    const avgTime = results.reduce((a,b)=>a+b.duration_ms,0) / results.length;
     document.getElementById("avgSteps").textContent = avgSteps.toFixed(2);
-    document.getElementById("avgTime").textContent = avgTime.toFixed(2);
+    document.getElementById("avgTime").textContent = avgTime.toFixed(3);
+
     // Update graph
-const now = new Date().toLocaleTimeString();
+    const now = new Date().toLocaleTimeString();
+    avgChart.data.labels.push(now);
+    avgChart.data.datasets[0].data.push(avgSteps);
+    avgChart.data.datasets[1].data.push(avgTime);
 
-avgChart.data.labels.push(now);
-avgChart.data.datasets[0].data.push(avgSteps);
-avgChart.data.datasets[1].data.push(avgTime);
+    if (avgChart.data.labels.length > 50) {
+        avgChart.data.labels.shift();
+        avgChart.data.datasets[0].data.shift();
+        avgChart.data.datasets[1].data.shift();
+    }
 
-// Keep graph from growing forever
-if (avgChart.data.labels.length > 50) {
-    avgChart.data.labels.shift();
-    avgChart.data.datasets[0].data.shift();
-    avgChart.data.datasets[1].data.shift();
-}
-
-avgChart.update();
-
+    avgChart.update();
 }
 
 setInterval(fetchData, 2000);
 fetchData();
 </script>
+
 
 </body>
 </html>
