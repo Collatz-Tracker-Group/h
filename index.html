@@ -96,7 +96,21 @@ async function fetchData() {
     const data = await res.json();
     if (!data) return;
 
-    const entries = Object.values(data);
+    // Flatten arrays inside Firebase auto-keys
+let entries = [];
+
+for (const key in data) {
+    const value = data[key];
+
+    if (Array.isArray(value)) {
+        // batch array → expand it
+        entries.push(...value);
+    } else {
+        // single entry → push it
+        entries.push(value);
+    }
+}
+
 
     // Latest 10
     const latest = entries.slice(-10).reverse();
