@@ -183,7 +183,7 @@ function fetchData() {
     avgChart.data.datasets[0].data.push(avgSteps);
     avgChart.data.datasets[1].data.push(avgTime);
 
-    if (avgChart.data.labels.length > 50) {
+    if (avgChart.data.labels.length > 5) {
         avgChart.data.labels.shift();
         avgChart.data.datasets[0].data.shift();
         avgChart.data.datasets[1].data.shift();
