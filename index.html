@@ -149,7 +149,7 @@ const avgChart = new Chart(ctx, {
 
 function fetchData() {
     // Internal calculation instead of Firebase fetch
-    const batchSize = 50;
+    const batchSize = 5;
     for (let i = 0; i < batchSize; i++) {
         results.push(collatzSteps(current));
         current++;
